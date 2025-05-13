@@ -1,0 +1,1 @@
+The source code of MH-SpGEMM: Efficient Sparse General Matrix-Matrix Multiplication on Modern GPUs via Masking and Hashing Cooperative Optimization
