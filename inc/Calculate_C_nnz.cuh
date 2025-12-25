@@ -417,23 +417,24 @@ __global__ void k_calculate_C_nnz_for_one_tile(
     int *__restrict__ ptrC)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
+    int j;
     if (i >= M)
         return;
     int rowid = bins[i];
     int Annz_start = ptrA[rowid];
     int Annz_end = ptrA[rowid + 1];
-    int tilecol;
     MASK_TYPE tilemask = 0;
-    int Bnnz_idx, col;
-    col = colA[Annz_start];
-    Bnnz_idx = tileptrB[col];
-    tilecol = tilecolB[Bnnz_idx];
-    tilemask |= tilemaskB[Bnnz_idx];
-    for (i = Annz_start + 1; i < Annz_end; i++)
+    int tilecol, col;
+
+    for (j = Annz_start; j < Annz_end; j++)
     {
-        col = colA[i];
-        Bnnz_idx = tileptrB[col];
-        tilemask |= tilemaskB[Bnnz_idx];
+        col = colA[j];
+        int start = tileptrB[col];
+        int end = tileptrB[col + 1];
+        if (end > start)
+        {
+            tilemask |= tilemaskB[start];
+        }
     }
     ptrC[rowid] = __popc(tilemask);
 }
@@ -762,7 +763,7 @@ __global__ void k_calculate_C_tileColAndtileMask_global_mem(
 {
     int i, k;
     int row_offset = blockIdx.x;
-    int *local_mask_offset = d_global_mem + row_offset * N * sizeof(MASK_TYPE);
+    int *local_mask_offset = d_global_mem + row_offset * N;
     __shared__ int shared_scan[32];
 
     for (i = threadIdx.x; i < N; i += blockDim.x)

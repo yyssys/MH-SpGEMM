@@ -157,4 +157,3 @@ int readMtxFile(CSR &A, const char *filename)
 
     return 0;
 }
-

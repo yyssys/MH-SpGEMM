@@ -72,7 +72,7 @@ void cusparse_spgemm_inner(int *d_row_ptr_A, int *d_col_idx_A, double *d_csr_val
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess)
     {
-        printf("cusparse is failed!\n");
+        printf("CUDA error: %s\n", cudaGetErrorString(error));
         *nnz_C = 0;
         return;
     }

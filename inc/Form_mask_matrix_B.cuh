@@ -19,6 +19,7 @@ __global__ void k_calculate_flop(
     int *__restrict__ d_row_flop)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
+    int j;
     int global_rowid = i >> 2;
     int local_rowid = threadIdx.x >> 2;
     int tid = threadIdx.x & 3;
@@ -36,7 +37,7 @@ __global__ void k_calculate_flop(
         int arow_start = d_arpt[global_rowid];
         int arow_end = d_arpt[global_rowid + 1];
         int sum = 0, acol, max_bnnz = 0;
-        for (int j = arow_start + tid; j < arow_end; j += 4)
+        for (j = arow_start + tid; j < arow_end; j += 4)
         {
             acol = d_acol[j];
             int nnz = d_tileptrB[acol];

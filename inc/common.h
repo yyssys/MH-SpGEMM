@@ -17,6 +17,14 @@
 #define SQUARING_B_MASK 1
 #define HASH_CONFLICT 0
 
+#if SQUARING_B_MASK
+constexpr int hash_size_B_tileptr[4] = {1063, 2131, 4259, 8527};
+constexpr int hash_size_B_tileColAndtileMask[4] = {523, 1063, 2131, 4259};
+#else
+constexpr int hash_size_B_tileptr[4] = {1024, 2048, 4096, 8192};
+constexpr int hash_size_B_tileColAndtileMask[4] = {512, 1024, 2048, 4096};
+#endif
+
 #if SQUARING
 constexpr int hash_size_C_tileptr[4] = {1063, 2131, 4259, 8527};
 constexpr int hash_size_C_nnz[4] = {523, 1063, 2131, 4259};
@@ -27,7 +35,6 @@ constexpr int hash_size_C_nnz[4] = {512, 1024, 2048, 4096};
 constexpr int hash_size_numeric[4] = {256, 512, 1024, 2048};
 #endif
 #define AAT 0
-
 
 #if SQUARING
 #define PWARP_HASH_SIZE_FOR_CTILEPTR 59
@@ -56,7 +63,6 @@ constexpr int hash_size_numeric[4] = {256, 512, 1024, 2048};
 #define PWARP_FOR_C_TILEPTR 4
 #define PWARP_ROWS_FOR_C_TILEPTR 128
 
-
 #define PWARP_FOR_C_NNZ 8
 #define PWARP_ROWS_FOR_C_NNZ 64
 
@@ -68,8 +74,6 @@ constexpr int hash_size_numeric[4] = {256, 512, 1024, 2048};
 #define BLOCK_SIZE_BIT 5 // 32
 #define BLOCK_SIZE 32
 
-
-
 #define SPGEMM 1
 #define CUSPARSE 0
 #define CHECK_RESULT 0
@@ -78,8 +82,8 @@ constexpr int hash_size_numeric[4] = {256, 512, 1024, 2048};
 // Error Detection
 #define likely(x) __builtin_expect(x, 1)
 #define unlikely(x) __builtin_expect(x, 0)
-    inline static void
-    checkCUDA(cudaError_t err, const char *file, int line)
+inline static void
+checkCUDA(cudaError_t err, const char *file, int line)
 {
     if (unlikely(err != cudaSuccess))
     {

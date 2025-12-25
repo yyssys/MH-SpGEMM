@@ -15,9 +15,20 @@ void MH_spgemm(const CSR &A, CSR &B, CSR &C, Timing &Timing, Tool &tools)
     t0 = fast_clock_time();
     C.M = A.M;
     C.N = B.N;
+    tools.allocate(B, C);
+    CHECK_ERROR(cudaDeviceSynchronize());
+    Timing.mem_alloc = (fast_clock_time() - t0) * 1000;
+
+    t0 = fast_clock_time();
     Form_mask_matrix_B(A, B, C, tools);
     CHECK_ERROR(cudaDeviceSynchronize());
     Timing.Form_mask_matrix_B = (fast_clock_time() - t0) * 1000;
+
+    t0 = fast_clock_time();
+    binning<2>(tools, tools.d_bins_C, C.d_ptr, C.M);
+    // printf("%u %u %u %u %u %u %u %u %u %u\n", tools.h_bin_size[0], tools.h_bin_size[1], tools.h_bin_size[2], tools.h_bin_size[3], tools.h_bin_size[4], tools.h_bin_size[5], tools.h_bin_size[6], tools.h_bin_size[7], tools.h_bin_size[8], tools.h_bin_size[9]);
+    CHECK_ERROR(cudaDeviceSynchronize());
+    Timing.symbolic_binning = (fast_clock_time() - t0) * 1000;
 
     t0 = fast_clock_time();
     Calculate_C_nnz(A, B, C, tools);
@@ -25,6 +36,23 @@ void MH_spgemm(const CSR &A, CSR &B, CSR &C, Timing &Timing, Tool &tools)
     Timing.Calculate_C_nnz = (fast_clock_time() - t0) * 1000;
 
     t0 = fast_clock_time();
+    binning<4>(tools, tools.d_bins_C, C.d_ptr, C.M);
+    CHECK_ERROR(cudaDeviceSynchronize());
+    Timing.numeric_binning = (fast_clock_time() - t0) * 1000;
+
+    // This adaptive grouping is for the numerical step.
+#if ADAPTIVE_GROUPING
+    t0 = fast_clock_time();
+    int GS = (A.M + 127) / 128;
+    k_calculate_flop_tmp<<<GS, 512>>>(A.d_ptr, A.d_col, B.d_ptr, A.M, C.d_tileptr);
+    int rows = C.M - tools.h_bin_offset[3];
+    k_init_group_size<2><<<(rows + 511) / 512, 512>>>(A.d_ptr, C.d_ptr, C.d_tileptr, rows, tools.d_bins_C + tools.h_bin_offset[3], tools.group_size);
+    Timing.Numeric += (fast_clock_time() - t0) * 1000;
+#endif
+
+    t0 = fast_clock_time();
+    cub::DeviceScan::ExclusiveSum(tools.d_cub_storage, tools.cub_temp_storage, C.d_ptr, C.d_ptr, C.M + 1, 0);
+    CHECK_ERROR(cudaMemcpy(tools.count, C.d_ptr + C.M, sizeof(int), cudaMemcpyDeviceToHost));
     C.nnz = *tools.count;
     printf("C.nnz = %d\n", C.nnz);
     CHECK_ERROR(cudaMalloc(&C.d_col, C.nnz * sizeof(int)));
@@ -125,10 +153,12 @@ int main(int argc, char **argv)
     if (error != cudaSuccess || cusparse_C.nnz <= 0)
     {
         printf("cusparse is failed!\n");
+        printf("CUDA error: %s\n", cudaGetErrorString(error));
         Gflops_cu = 0;
     }
     else
     {
+        printf("cuSPARSE C.nnz = %d\n", cusparse_C.nnz);
         cusparse_C.D2H();
         Gflops_cu = 2.0 * (double)int_result / (cusparse_time * 1e6);
         printf("cusparse: %.3lfms, Gflops is %.2lf\n", cusparse_time, Gflops_cu);
@@ -142,10 +172,11 @@ int main(int argc, char **argv)
     }
     Throughput_CU.seekp(0, std::ios::end);
     Throughput_CU << std::fixed << std::setprecision(3)
-               << Gflops_cu << std::endl;
+                  << Gflops_cu << std::endl;
     Throughput_CU.close();
 #endif
 #endif
+
 #if CHECK_RESULT && CUSPARSE
     C.D2H();
     if (C == cusparse_C)
@@ -159,7 +190,7 @@ int main(int argc, char **argv)
     cusparse_C.release();
 #endif
 
-#if WRITE
+#if WRITE && SPGEMM
     std::ofstream Throughput("./data/Gflops_MH-SpGEMM.csv", std::ios::app);
 
     if (!Throughput)

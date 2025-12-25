@@ -17,17 +17,23 @@ __global__ void k_numeric_for_one_nnz(
     int rowid = d_bins[i];
     int Annz_start = d_ptrA[rowid];
     int Annz_end = d_ptrA[rowid + 1];
-    int colA = d_colA[Annz_start];
-    VALUE_TYPE valA = d_valA[Annz_start];
-    int Bnnz_idx = d_ptrB[colA];
-    int colC = d_colB[Bnnz_idx];
-    VALUE_TYPE valC = d_valB[Bnnz_idx] * valA;
-    for (i = Annz_start + 1; i < Annz_end; i++)
+
+    int colA;
+    VALUE_TYPE valA;
+    int colC;
+    VALUE_TYPE valC = 0;
+
+    for (i = Annz_start; i < Annz_end; i++)
     {
         colA = d_colA[i];
         valA = d_valA[i];
-        Bnnz_idx = d_ptrB[colA];
-        valC += d_valB[Bnnz_idx] * valA;
+        int start = d_ptrB[colA];
+        int end = d_ptrB[colA + 1];
+        if (end > start)
+        {
+            colC = d_colB[start];
+            valC += d_valB[start] * valA;
+        }
     }
     int offset = d_ptrC[rowid];
     d_colC[offset] = colC;
@@ -501,7 +507,7 @@ __global__ void k_numeric_global_hash(
     VALUE_TYPE *table_val = (VALUE_TYPE *)(table_col + max_tsize);
     int c_offset = d_ptrC[rowid];
     int row_nnz = d_ptrC[rowid + 1] - c_offset;
-    int tsize = row_nnz * 2;
+    int tsize = max_tsize;
     for (i = threadIdx.x; i < tsize; i += blockDim.x)
     {
         table_col[i] = -1;

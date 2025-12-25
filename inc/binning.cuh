@@ -44,7 +44,7 @@ __device__ __forceinline__ int get_range(int j)
         //                 hash_size = 0  0  59  523  1063 2131  4259  12671 dense
         const int c_range[BIN_SIZE] = {0, 1, 30, 262, 532, 1066, 2130, 6336, INT_MAX}; // 2
 #else
-        //                 hash_size = 0  0  64  512  1024 2048  4096  12671 dense
+        //                 hash_size = 0  0  64  512  1024 2048  4096  12672 dense
         const int c_range[BIN_SIZE] = {0, 1, 32, 256, 512, 1024, 2048, 6336, INT_MAX}; // 2
 #endif
         return c_range[j];
