@@ -25,7 +25,8 @@ while IFS= read -r matrix_name || [[ -n "$matrix_name" ]]; do
     if [ -f "$mtx_file" ]; then
         echo "[$count/$total_count] Processing: $mtx_file"
         "$executable" "$mtx_file"
-        if [ $? -ne 0 ]; then
+        ret=$?
+        if [ $ret -ne 0 ]; then
             echo "Error: Failed to process $mtx_file"
             exit 1
         fi

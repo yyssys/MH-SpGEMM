@@ -204,7 +204,8 @@ __global__ void k_calculate_B_tilePtr_shared_hash_pwarp(
                 hash = (hash + j * j) % PWARP_HASH_SIZE_FOR_B_TILEPTR;
                 j++;
 #else
-                hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_B_TILEPTR - 1);
+                // hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_B_TILEPTR - 1);
+                hash = (hash + 1) < PWARP_HASH_SIZE_FOR_B_TILEPTR ? (hash + 1) : 0;
 #endif
             }
         }
@@ -269,7 +270,8 @@ __global__ void k_calculate_B_tilePtr_shared_hash_tb(
                 hash = (hash + j * j) % HASH_SIZE;
                 j++;
 #else
-                hash = (hash + 1) & (HASH_SIZE - 1);
+                // hash = (hash + 1) & (HASH_SIZE - 1);
+                hash = (hash + 1) < HASH_SIZE ? (hash + 1) : 0;
 #endif
             }
         }
@@ -532,7 +534,8 @@ __global__ void k_calculate_B_tileColAndtileMask_shared_hash_pwarp(
                 hash = (hash + j * j) % PWARP_HASH_SIZE_FOR_B_MASK;
                 j++;
 #else
-                hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_B_MASK - 1);
+                // hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_B_MASK - 1);
+                hash = (hash + 1) < PWARP_HASH_SIZE_FOR_B_MASK ? (hash + 1) : 0;
 #endif
             }
         }
@@ -607,7 +610,8 @@ __global__ void k_calculate_B_tileColAndtileMask_shared_hash_tb(
                 hash = (hash + j * j) % HASH_SIZE;
                 j++;
 #else
-                hash = (hash + 1) & (HASH_SIZE - 1);
+                // hash = (hash + 1) & (HASH_SIZE - 1);
+                hash = (hash + 1) < HASH_SIZE ? (hash + 1) : 0;
 #endif
             }
         }

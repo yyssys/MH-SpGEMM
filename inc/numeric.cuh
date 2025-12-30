@@ -120,7 +120,8 @@ __global__ void k_numeric_shared_hash_pwarp(
                     hash = (hash + j * j) % PWARP_HASH_SIZE_FOR_NUMERIC;
                     j++;
 #else
-                    hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_NUMERIC - 1);
+                    // hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_NUMERIC - 1);
+                    hash = (hash + 1) < PWARP_HASH_SIZE_FOR_NUMERIC ? hash + 1 : 0;
 #endif
                 }
             }
@@ -248,7 +249,8 @@ __global__ void k_numeric_shared_hash_tb(
                     hash = (hash + j * j) % HASH_SIZE;
                     j++;
 #else
-                    hash = (hash + 1) & (HASH_SIZE - 1);
+                    // hash = (hash + 1) & (HASH_SIZE - 1);
+                    hash = (hash + 1) < HASH_SIZE ? hash + 1 : 0;
 #endif
                 }
             }
@@ -384,7 +386,8 @@ __global__ void k_numeric_max_shared_hash_tb(
                     hash = (hash + j * j) % tsize;
                     j++;
 #else
-                    hash = (hash + 1) & (tsize - 1);
+                    // hash = (hash + 1) & (tsize - 1);
+                    hash = (hash + 1) < tsize ? hash + 1 : 0;
 #endif
                 }
             }

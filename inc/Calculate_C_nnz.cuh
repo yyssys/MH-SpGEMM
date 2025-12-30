@@ -157,7 +157,8 @@ __global__ void k_calculate_C_tilePtr_shared_hash_pwarp(
                     hash = (hash + j * j) % PWARP_HASH_SIZE_FOR_CTILEPTR;
                     j++;
 #else
-                    hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_CTILEPTR - 1);
+                    // hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_CTILEPTR - 1);
+                    hash = (hash + 1) < PWARP_HASH_SIZE_FOR_CTILEPTR ? (hash + 1) : 0;
 #endif
                 }
             }
@@ -244,7 +245,8 @@ __global__ void k_calculate_C_tilePtr_shared_hash_tb(
                     hash = (hash + j * j) % HASH_SIZE;
                     j++;
 #else
-                    hash = (hash + 1) & (HASH_SIZE - 1);
+                    // hash = (hash + 1) & (HASH_SIZE - 1);
+                    hash = (hash + 1) < HASH_SIZE ? (hash + 1) : 0;
 #endif
                 }
             }
@@ -509,7 +511,8 @@ __global__ void k_calculate_C_nnz_shared_hash_pwarp(
                     hash = (hash + j * j) % PWARP_HASH_SIZE_FOR_C_NNZ;
                     j++;
 #else
-                    hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_C_NNZ - 1);
+                    // hash = (hash + 1) & (PWARP_HASH_SIZE_FOR_C_NNZ - 1);
+                    hash = (hash + 1) < PWARP_HASH_SIZE_FOR_C_NNZ ? (hash + 1) : 0;
 #endif
                 }
             }
@@ -598,7 +601,8 @@ __global__ void k_calculate_C_nnz_shared_hash_tb(
                     hash = (hash + j * j) % HASH_SIZE;
                     j++;
 #else
-                    hash = (hash + 1) & (HASH_SIZE - 1);
+                    // hash = (hash + 1) & (HASH_SIZE - 1);
+                    hash = (hash + 1) < HASH_SIZE ? (hash + 1) : 0;
 #endif
                 }
             }
