@@ -38,6 +38,7 @@ void MH_spgemm(const CSR &A, CSR &B, CSR &C, Timing &Timing, Tool &tools)
     t0 = fast_clock_time();
     binning<4>(tools, tools.d_bins_C, C.d_ptr, C.M);
     CHECK_ERROR(cudaDeviceSynchronize());
+    // printf("%u %u %u %u %u %u %u %u %u %u\n", tools.h_bin_size[0], tools.h_bin_size[1], tools.h_bin_size[2], tools.h_bin_size[3], tools.h_bin_size[4], tools.h_bin_size[5], tools.h_bin_size[6], tools.h_bin_size[7], tools.h_bin_size[8], tools.h_bin_size[9]);
     Timing.numeric_binning = (fast_clock_time() - t0) * 1000;
 
     // This adaptive grouping is for the numerical step.
@@ -109,31 +110,39 @@ int main(int argc, char **argv)
     A.H2D();
     B.H2D();
     int iter;
-    double Gflops = 0;
 #if SPGEMM
+    double Gflops = 0;
     printf("Matrix %s (%d , %d) nnz:%d\n", matrix_name.c_str(), A.M, B.N, A.nnz);
     printf("SpGEMM intermediate result = %lld\n", int_result);
     Timing timing, bench_timing;
     Tool tools;
     iter = 1;
-    for (int i = 0; i < iter; i++)
+    try
     {
-        MH_spgemm(A, B, C, timing, tools);
-        bench_timing += timing;
-        if (i < iter - 1)
+        for (int i = 0; i < iter; i++)
         {
-            C.d_release_csr();
-            tools.release();
-            B.d_release_tile();
-            CHECK_ERROR(cudaFree(C.d_tileptr));
+            MH_spgemm(A, B, C, timing, tools);
+            bench_timing += timing;
+            if (i < iter - 1)
+            {
+                C.d_release_csr();
+                tools.release();
+                B.d_release_tile();
+                CHECK_ERROR(cudaFree(C.d_tileptr));
+            }
         }
+        bench_timing /= iter;
+        bench_timing.print_step_time();
+        Gflops = 2.0 * (double)int_result / (bench_timing.getTotal() * 1e6);
+        printf("MH-SpGEMM runtime is %.3lfms, Gflops is %.2lf\n", bench_timing.getTotal(), Gflops);
+        tools.release();
+        B.d_release_tile();
     }
-    bench_timing /= iter;
-    bench_timing.print_step_time();
-    Gflops = 2.0 * (double)int_result / (bench_timing.getTotal() * 1e6);
-    printf("MH-SpGEMM runtime is %.3lfms, Gflops is %.2lf\n", bench_timing.getTotal(), Gflops);
-    tools.release();
-    B.d_release_tile();
+    catch (const std::exception &e)
+    {
+        printf("MH-SpGEMM failed!!!\n");
+        Gflops = 0;
+    }
 #endif
 
 #if CUSPARSE
@@ -141,28 +150,26 @@ int main(int argc, char **argv)
     double Gflops_cu = 0;
     CSR cusparse_C;
     iter = 1;
-    for (int i = 0; i < iter; i++)
+    try
     {
-        cusparse_spgemm(&A, &B, &cusparse_C, &cusparse_time);
-        if (i < iter - 1)
+        for (int i = 0; i < iter; i++)
         {
-            cusparse_C.release();
+            cusparse_spgemm(&A, &B, &cusparse_C, &cusparse_time);
+            if (i < iter - 1)
+            {
+                cusparse_C.release();
+            }
         }
-    }
-    cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess || cusparse_C.nnz <= 0)
-    {
-        printf("cusparse is failed!\n");
-        printf("CUDA error: %s\n", cudaGetErrorString(error));
-        Gflops_cu = 0;
-    }
-    else
-    {
         printf("cuSPARSE C.nnz = %d\n", cusparse_C.nnz);
-        cusparse_C.D2H();
         Gflops_cu = 2.0 * (double)int_result / (cusparse_time * 1e6);
         printf("cusparse: %.3lfms, Gflops is %.2lf\n", cusparse_time, Gflops_cu);
     }
+    catch (const std::exception &e)
+    {
+        printf("cuSPARSE failed!!!\n");
+        Gflops_cu = 0;
+    }
+
 #if WRITE
     std::ofstream Throughput_CU("./data/Gflops_cu.csv", std::ios::app);
     if (!Throughput_CU)
@@ -171,14 +178,15 @@ int main(int argc, char **argv)
         return 1;
     }
     Throughput_CU.seekp(0, std::ios::end);
-    Throughput_CU << std::fixed << std::setprecision(3)
+    Throughput_CU << std::fixed << std::setprecision(2)
                   << Gflops_cu << std::endl;
     Throughput_CU.close();
 #endif
 #endif
 
-#if CHECK_RESULT && CUSPARSE
+#if CHECK_RESULT && CUSPARSE && SPGEMM
     C.D2H();
+    cusparse_C.D2H();
     if (C == cusparse_C)
     {
         printf("pass\n");

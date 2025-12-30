@@ -25,7 +25,7 @@ void cusparse_spgemm_inner(int *d_row_ptr_A, int *d_col_idx_A, double *d_csr_val
                       CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
                       CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F);
 
-    cudaDeviceSynchronize();
+    CHECK_ERROR(cudaDeviceSynchronize());
     double t0, t1;
     t0 = fast_clock_time();
 
@@ -38,7 +38,7 @@ void cusparse_spgemm_inner(int *d_row_ptr_A, int *d_col_idx_A, double *d_csr_val
     double alpha = 1.0f;
     double beta = 0.0f;
 
-    cudaMalloc((void **)d_row_ptr_C, (M + 1) * sizeof(int));
+    CHECK_ERROR(cudaMalloc((void **)d_row_ptr_C, (M + 1) * sizeof(int)));
 
     cusparseSpGEMMDescr_t spgemmDescr;
     cusparseSpGEMM_createDescr(&spgemmDescr);
@@ -47,7 +47,7 @@ void cusparse_spgemm_inner(int *d_row_ptr_A, int *d_col_idx_A, double *d_csr_val
                                   &alpha, matA, matB, &beta, matC,
                                   computeType, CUSPARSE_SPGEMM_DEFAULT,
                                   spgemmDescr, &bufferSize1, NULL);
-    cudaMalloc((void **)&dBuffer1, bufferSize1);
+    CHECK_ERROR(cudaMalloc((void **)&dBuffer1, bufferSize1));
     cusparseSpGEMM_workEstimation(handle, opA, opB,
                                   &alpha, matA, matB, &beta, matC,
                                   computeType, CUSPARSE_SPGEMM_DEFAULT,
@@ -57,7 +57,7 @@ void cusparse_spgemm_inner(int *d_row_ptr_A, int *d_col_idx_A, double *d_csr_val
                            computeType, CUSPARSE_SPGEMM_DEFAULT,
                            spgemmDescr, &bufferSize2, NULL);
 
-    cudaMalloc((void **)&dBuffer2, bufferSize2);
+    CHECK_ERROR(cudaMalloc((void **)&dBuffer2, bufferSize2));
 
     cusparseSpGEMM_compute(handle, opA, opB,
                            &alpha, matA, matB, &beta, matC,
@@ -67,15 +67,9 @@ void cusparse_spgemm_inner(int *d_row_ptr_A, int *d_col_idx_A, double *d_csr_val
     int64_t M_C, N_C, nnz_C_64I;
     cusparseSpMatGetSize(matC, &M_C, &N_C, &nnz_C_64I);
     *nnz_C = nnz_C_64I;
-    cudaMalloc((void **)d_col_idx_C, *nnz_C * sizeof(int));
-    cudaMalloc((void **)d_csr_values_C, *nnz_C * sizeof(double));
-    cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess)
-    {
-        printf("CUDA error: %s\n", cudaGetErrorString(error));
-        *nnz_C = 0;
-        return;
-    }
+    CHECK_ERROR(cudaMalloc((void **)d_col_idx_C, *nnz_C * sizeof(int)));
+    CHECK_ERROR(cudaMalloc((void **)d_csr_values_C, *nnz_C * sizeof(double)));
+
     cusparseCsrSetPointers(matC, *d_row_ptr_C, *d_col_idx_C, *d_csr_values_C);
 
     cusparseSpGEMM_copy(handle, opA, opB,
@@ -90,9 +84,13 @@ void cusparse_spgemm_inner(int *d_row_ptr_A, int *d_col_idx_A, double *d_csr_val
     cudaFree(dBuffer1);
     cudaFree(dBuffer2);
 
-    cudaDeviceSynchronize();
+    CHECK_ERROR(cudaDeviceSynchronize());
     t1 = fast_clock_time();
     *time = (t1 - t0) * 1000;
+    if (nnz_C_64I <= 0)
+    {
+        throw std::exception();
+    }
 }
 
 void cusparse_spgemm(CSR *a, CSR *b, CSR *c, double *time)
